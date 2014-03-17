@@ -14,16 +14,32 @@ import android.view.WindowManager;
 public class Compass extends Activity {
 	
 	private SensorManager sensorManager;
-	private Sensor sensor;
+	private Sensor accelerometer;
+	private Sensor magnetometer;
 	private Rose rose;
 	
 	private SensorEventListener sensorListener = new SensorEventListener() {
 		
+		float[] mGravity;
+		float[] mGeomagnetic;
+		
 		@Override
 		public void onSensorChanged(SensorEvent event) {
-			int orientation = (int) event.values[0];
-			Log.d("Compass", "Got sensor event: " + event.values[0]);
-			rose.setDirection(orientation);
+			if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER)
+			    mGravity = event.values;
+			if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD)
+			    mGeomagnetic = event.values;
+			if (mGravity != null && mGeomagnetic != null) {
+			    float R[] = new float[9];
+			    float I[] = new float[9];
+			    boolean success = SensorManager.getRotationMatrix(R, I, mGravity, mGeomagnetic);
+			    if (success) {
+			        float orientation[] = new float[3];
+			        SensorManager.getOrientation(R, orientation);
+			        float azimut = orientation[0];
+			        rose.setDirection(azimut);
+			    }
+			}
 		}
 		
 		@Override
@@ -45,15 +61,17 @@ public class Compass extends Activity {
 		
 		// Get sensor and sensor manager
 		sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE); 
-		sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
-		
+		accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+	    magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+				
 		Log.d("Compass", "onCreated");
 	}
 	
 	@Override
 	protected void onResume() {
 		super.onResume();
-		sensorManager.registerListener(sensorListener , sensor, SensorManager.SENSOR_DELAY_NORMAL);
+		sensorManager.registerListener(sensorListener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+	    sensorManager.registerListener(sensorListener, magnetometer, SensorManager.SENSOR_DELAY_NORMAL);
 	}
 	
 	@Override
